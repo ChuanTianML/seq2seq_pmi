@@ -1,8 +1,8 @@
-DATA_DIR=/home/tiwe/t-chtian/dataClean/data/not_scored/seq2seq
+DATA_DIR=/mnt/t-chtian/dataClean/data/not_scored/seq2seq
 
 mkdir tmp/pmi_model
 
-rm -r tmp/pmi_model/src2tgt
+rm -rf tmp/pmi_model/src2tgt
 mkdir tmp/pmi_model/src2tgt
 python -m nmt.nmt \
         --src=titl --tgt=comm \
@@ -26,7 +26,7 @@ python -m nmt.nmt \
         --decay_scheme=luong10
 
 :<<!
-rm -r tmp/pmi_model/tgt2src
+rm -rf tmp/pmi_model/tgt2src
 mkdir tmp/pmi_model/tgt2src
 python -m nmt.nmt \
         --src=comm --tgt=titl \
