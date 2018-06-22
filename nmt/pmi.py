@@ -12,8 +12,8 @@ from .utils import misc_utils as utils
 class Pmi():
     def __init__(self, only_tgt2src = False):
         # the directories of models
-        src2tgt_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/nmt_model/src2tgt'
-        tgt2src_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/nmt_model/tgt2src'
+        src2tgt_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/pmi_model/src2tgt'
+        tgt2src_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/pmi_model/tgt2src'
 
         # load model
         self.src2tgt_model, self.src2tgt_sess = self.load_model(src2tgt_dir)
@@ -124,7 +124,7 @@ class Pmi():
         src2tgt_log_prob = self.src2tgt_log_probability(src, tgt, re_cut)
         tgt2src_log_prob = self.tgt2src_log_probability(src, tgt, re_cut)
         pmi = lever * src2tgt_log_prob + (1.0-lever) * tgt2src_log_prob
-        return pmi
+        return pmi, src2tgt_log_prob, tgt2src_log_prob
 
     def preproc(self, sentence):
         """ re-cut the input sentence

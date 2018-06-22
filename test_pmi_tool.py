@@ -1,8 +1,6 @@
-
-
+# encoding=utf-8
 
 from nmt.pmi import Pmi
-
 
 print 'initializing pmi tool...'
 pmi_tool = Pmi()
