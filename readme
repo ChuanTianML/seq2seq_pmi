@@ -1,2 +1,20 @@
-compute pmi using seq2seq method.
-base on google nmt.
+
+# compute pmi using seq2seq method.
+# base on google nmt.
+
+## train 
+    train.sh
+    log.src2tgt     # the log of training
+    log.tgt2src     # the log of training
+
+    ### also nedd
+        train/dev/test data
+        vocab       # a word-character vocabulary to avoid unknown words problem
+        embedding   # the embedding size mush be same as the units num of model
+
+## compute pmi
+    compute_pmi.py
+    ./scripts/pmi.sh    # the shell to run compute_pmi.py
+
+    ### also need
+        remain_words.txt    # used when recutting sentences
