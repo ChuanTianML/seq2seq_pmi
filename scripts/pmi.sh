@@ -1,7 +1,8 @@
-CORPUS=/home/tiwe/t-chtian/dataClean/data/not_scored/test.txt
-OP_DIR=/home/tiwe/t-chtian/dataClean/data/not_scored/seq2seq/results/
+#CORPUS=/mnt/t-chtian/dataClean/data/not_scored/test.txt
+CORPUS=/mnt/t-chtian/dataClean/data/not_scored/data.all.txt
+OP_DIR=/mnt/t-chtian/dataClean/data/not_scored/seq2seq/results/
 OP_FILE=data.pmi
-VOCAB=/home/tiwe/t-chtian/dataClean/data/not_scored/remain_words.txt
+VOCAB=/mnt/t-chtian/dataClean/data/not_scored/remain_words.txt
 DEBUG=1
 
 

@@ -12,12 +12,18 @@ from .utils import misc_utils as utils
 class Pmi():
     def __init__(self, only_tgt2src = False):
         # the directories of models
-        src2tgt_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/pmi_model/src2tgt'
-        tgt2src_dir = '/home/tiwe/t-chtian/dataClean/neur/nmt/tmp/pmi_model/tgt2src'
+        src2tgt_dir = 'tmp/pmi_model/src2tgt' # need to replace with best dev model
+        tgt2src_dir = 'tmp/pmi_model/tgt2src'
+        remain_vocab_file = '/mnt/t-chtian/dataClean/data/not_scored/remain_words.txt' # need to do
+        self.debug = False
 
         # load model
         self.src2tgt_model, self.src2tgt_sess = self.load_model(src2tgt_dir)
         self.tgt2src_model, self.tgt2src_sess = self.load_model(tgt2src_dir)
+
+        # load remain words
+        words = open(remain_vocab_file, 'r').readlines()
+        self.remain_words_set = set([w.strip() for w in words])
 
     def load_model(self, out_dir):
         
@@ -83,7 +89,15 @@ class Pmi():
         }
         sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
 
-        loss, predict_count, batch_size = model.model.eval(sess)
+        loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        #loss, predict_count, batch_size = model.model.eval(sess)
+
+        # debug
+        if self.debug:
+            op_str = ('src2tgt:\twords_num %d,\twords_log_prob: ' % predict_count)
+            for p in crossent:
+                op_str += ('%.4f ' % p)
+            print op_str
 
         return -loss/predict_count
 
@@ -108,8 +122,16 @@ class Pmi():
         }
         sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
 
-        loss, predict_count, batch_size = model.model.eval(sess)
-        
+        loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        #loss, predict_count, batch_size = model.model.eval(sess)
+ 
+        # debug
+        if self.debug:
+            op_str = ('tgt2src:\twords_num %d,\twords_log_prob: ' % predict_count)
+            for p in crossent:
+                op_str += ('%.4f ' % p)
+            print op_str
+       
         return -loss/predict_count
 
     def pmi(self, src, tgt, lever=0.5, re_cut=True):
@@ -132,8 +154,18 @@ class Pmi():
         sentence = ''.join(sentence.strip().split())
         words = jieba.lcut(sentence)
         words = [w.encode('utf-8') for w in words]
-        sentence = ' '.join(words)
-        return sentence
+        words_cut = []
+        for w in words:
+            if w in self.remain_words_set: words_cut.append(w)
+            else: words_cut += self.character_cut(w)
+        sentence_cut = ' '.join(words_cut)
+        return sentence_cut
+
+    def character_cut(self, word):
+        chs = []
+        for c in unicode(word, 'utf-8'):
+            chs.append(c.encode('utf-8'))
+        return chs
 
 
 

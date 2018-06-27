@@ -1,5 +1,6 @@
 DATA_DIR=/mnt/t-chtian/dataClean/data/not_scored/seq2seq
 
+:<<!
 mkdir tmp/pmi_model
 
 rm -rf tmp/pmi_model/src2tgt
@@ -24,11 +25,11 @@ python -m nmt.nmt \
         --dropout=0.2 \ 
         --num_gpus=2 \
         --decay_scheme=luong10
+!
 
-:<<!
 rm -rf tmp/pmi_model/tgt2src
 mkdir tmp/pmi_model/tgt2src
-python -m nmt.nmt \
+CUDA_VISIBLE_DEVICES=1,2,3 python -m nmt.nmt \
         --src=comm --tgt=titl \
         --vocab_prefix=$DATA_DIR/embedding/vocab  \
         --embed_prefix=$DATA_DIR/embedding/embed \
@@ -46,6 +47,5 @@ python -m nmt.nmt \
         --attention_architecture=gnmt_v2 \
         --num_units=512 \
         --dropout=0.2 \
-        --num_gpus=2 \
+        --num_gpus=3 \
         --decay_scheme=luong10
-!

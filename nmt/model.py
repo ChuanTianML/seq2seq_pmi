@@ -115,6 +115,7 @@ class BaseModel(object):
               self.iterator.target_sequence_length)
     elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
       self.eval_loss = res[1]
+      self.eval_logits = res[0] # tc
     elif self.mode == tf.contrib.learn.ModeKeys.INFER:
       self.infer_logits, _, self.final_context_state, self.sample_id = res
       self.sample_words = reverse_target_vocab_table.lookup(
@@ -270,6 +271,15 @@ class BaseModel(object):
     return sess.run([self.eval_loss,
                      self.predict_count,
                      self.batch_size])
+
+  def prob(self, sess):
+    assert self.mode == tf.contrib.learn.ModeKeys.EVAL
+    self.crossent = self._compute_crossent(self.eval_logits)
+    return sess.run([self.eval_loss,
+                     self.predict_count,
+                     self.batch_size,
+                     self.crossent])
+
 
   def build_graph(self, hparams, scope=None):
     """Subclass must implement this method.
@@ -511,6 +521,24 @@ class BaseModel(object):
     loss = tf.reduce_sum(
         crossent * target_weights) / tf.to_float(self.batch_size)
     return loss
+
+  def _compute_crossent(self, logits):
+    """Compute the log-probability of each words in a sentence.
+       Assert batch_size == 1
+    """
+    target_output = self.iterator.target_output
+    if self.time_major:
+      target_output = tf.transpose(target_output)
+    max_time = self.get_max_time(target_output)
+    crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=target_output, logits=logits)
+    target_weights = tf.sequence_mask(
+        self.iterator.target_sequence_length, max_time, dtype=logits.dtype)
+    if self.time_major:
+      target_weights = tf.transpose(target_weights)
+    crossent = crossent * target_weights
+    return crossent
+
 
   def _get_infer_summary(self, hparams):
     return tf.no_op()

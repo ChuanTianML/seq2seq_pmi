@@ -12,7 +12,7 @@ args.add_argument('-o_path', type=str, dest='o_path', help='output file path.')
 args.add_argument('-vocab_path', type=str, dest='vocab_path', help='vocab file path.')
 args.add_argument('-lever', type=str, default=0.5, dest='lever', help='lever between src2tgt and tgt2src.')
 args.add_argument('-debug', type=int, default=0, dest='debug', help='run as debugging.')
-args.add_argument('-debug_num', type=int, default=50, dest='debug_num', help='corpus lines num when debugging.')
+args.add_argument('-debug_num', type=int, default=100, dest='debug_num', help='corpus lines num when debugging.')
 args = args.parse_args()
 
 # functions
@@ -23,8 +23,11 @@ def character_cut(word):
     return chs
 
 def re_cut(sentence, vocab):
+    ''' not used.
+    '''
     sentence = ''.join(sentence.strip().split())
     ws = jieba.lcut(sentence)
+    ws = [w.encode('utf-8') for w in ws]
     ws_cut = []
     for w in ws:
         if w in vocab: ws_cut.append(w)
@@ -44,15 +47,15 @@ o_file = open(args.o_path, 'w')
 idx = 0
 for line in open(args.i_path, 'r'):
     titl, comm = line.strip().split('\t')
-    titl = re_cut(titl, vocab_set)
-    comm = re_cut(comm, vocab_set)
+    #titl = re_cut(titl, vocab_set) # pmi_tool do re-cut
+    #comm = re_cut(comm, vocab_set)
     pmi, t2c, c2t = pmi_tool.pmi(titl, comm, args.lever)
     o_file.write('%.4f\t%.4f\t%.4f\t%s\t%s\n' % (pmi, t2c, c2t, titl, comm))
     idx += 1
-    if 0 == idx%100000:
-        sys.stdout.write('%dw lines processed.' % (idx/10000))
+    if 0 == idx%100:
+        sys.stdout.write('%d lines processed.\r' % (idx))
         sys.stdout.flush()
-    if 1 == debug and idx > args.debug_num: break
+    if 1 == args.debug and idx > args.debug_num: break
 o_file.close()
 print 'finish.'
 
