@@ -89,8 +89,8 @@ class Pmi():
         }
         sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
 
-        loss, predict_count, batch_size, crossent = model.model.prob(sess)
-        #loss, predict_count, batch_size = model.model.eval(sess)
+        #loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        loss, predict_count, batch_size = model.model.eval(sess)
 
         # debug
         if self.debug:
@@ -122,8 +122,8 @@ class Pmi():
         }
         sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
 
-        loss, predict_count, batch_size, crossent = model.model.prob(sess)
-        #loss, predict_count, batch_size = model.model.eval(sess)
+        #loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        loss, predict_count, batch_size = model.model.eval(sess)
  
         # debug
         if self.debug:

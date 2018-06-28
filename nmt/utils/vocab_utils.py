@@ -75,6 +75,13 @@ def check_vocab(vocab_file, out_dir, check_special_token=True, sos=None,
   vocab_size = len(vocab)
   return vocab_size, vocab_file
 
+def create_vocab_table_lm(vocab_file): # tc: 
+  """Creates vocab table."""
+  vocab_table = lookup_ops.index_table_from_file(
+      src_vocab_file, default_value=UNK_ID)
+  return vocab_table
+
+
 
 def create_vocab_tables(src_vocab_file, tgt_vocab_file, share_vocab):
   """Creates vocab tables for src_vocab_file and tgt_vocab_file."""

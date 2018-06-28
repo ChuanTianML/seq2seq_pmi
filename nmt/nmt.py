@@ -40,6 +40,12 @@ def add_arguments(parser):
   """Build ArgumentParser."""
   parser.register("type", "bool", lambda v: v.lower() == "true")
 
+  parser.add_argument("--lm_train_file", type=str, help="data file for training language model.")
+  parser.add_argument("--lm_dev_file", type=str, help="data file for validating language model.")
+  parser.add_argument("--lm_test_file", type=str, help="data file for testing language model.")
+  parser.add_argument("--lm_vocab_file", type=str, help="vocabulary file for testing language model.")
+  parser.add_argument("--lm", type=int, default=0, help="training language model or seq2seq model.")
+
   # network
   parser.add_argument("--num_units", type=int, default=32, help="Network size.")
   parser.add_argument("--num_layers", type=int, default=2,
@@ -601,6 +607,9 @@ def main(unused_argv):
   default_hparams = create_hparams(FLAGS)
   train_fn = train.train
   inference_fn = inference.inference
+  if 1 == default_hparams.lm:
+    train_fn = train.train_lm
+    inference_fn = None
   run_main(FLAGS, default_hparams, train_fn, inference_fn)
 
 

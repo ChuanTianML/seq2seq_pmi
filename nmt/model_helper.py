@@ -63,6 +63,56 @@ class TrainModel(
                                           "skip_count_placeholder"))):
   pass
 
+def create_train_model_lm( # tc: 
+    model_creator, hparams, scope=None, num_workers=1, jobid=0,
+    extra_args=None):
+  """Create train graph, model, and iterator."""
+  data_file = hparams.lm_train_file # train data for language model.
+  vocab_file = hparams.lm_vocab_file
+
+  graph = tf.Graph()
+
+  with graph.as_default(), tf.container(scope or "train"):
+    vocab_table = vocab_utils.create_vocab_table_lm(vocab_file)
+    dataset = tf.data.TextLineDataset(data_file)
+    skip_count_placeholder = tf.placeholder(shape=(), dtype=tf.int64)
+
+    iterator = iterator_utils.get_iterator(
+        dataset, # src dataset
+        dataset, # tgt dataset
+        vocab_table, # src vocab table
+        vocab_table, # tgt vocab table
+        batch_size=hparams.batch_size,
+        sos=hparams.sos,
+        eos=hparams.eos,
+        random_seed=hparams.random_seed,
+        num_buckets=hparams.num_buckets,
+        src_max_len=hparams.src_max_len, # leave it
+        tgt_max_len=hparams.tgt_max_len,
+        skip_count=skip_count_placeholder,
+        num_shards=num_workers,
+        shard_index=jobid)
+
+    # Note: One can set model_device_fn to
+    # `tf.train.replica_device_setter(ps_tasks)` for distributed training.
+    model_device_fn = None
+    if extra_args: model_device_fn = extra_args.model_device_fn
+    with tf.device(model_device_fn):
+      model = model_creator(
+          hparams,
+          iterator=iterator,
+          mode=tf.contrib.learn.ModeKeys.TRAIN,
+          source_vocab_table=vocab_table,
+          target_vocab_table=vocab_table,
+          scope=scope,
+          extra_args=extra_args)
+
+  return TrainModel(
+      graph=graph,
+      model=model,
+      iterator=iterator,
+      skip_count_placeholder=skip_count_placeholder)
+
 
 def create_train_model(
     model_creator, hparams, scope=None, num_workers=1, jobid=0,
@@ -182,6 +232,51 @@ def create_prob_model(model_creator, hparams, scope=None, extra_args=None):
       tgt_placeholder=tgt_placeholder,
       batch_size_placeholder=batch_size_placeholder,
       iterator=iterator)
+
+def create_eval_model_lm(model_creator, hparams, scope=None, extra_args=None):
+  """Create train graph, model, src/tgt file holders, and iterator."""
+  #src_vocab_file = hparams.src_vocab_file
+  #tgt_vocab_file = hparams.tgt_vocab_file
+  vocab_file = hparams.lm_vocab_file
+  graph = tf.Graph()
+
+  with graph.as_default(), tf.container(scope or "eval"):
+    #src_vocab_table, tgt_vocab_table = vocab_utils.create_vocab_tables(
+    #    src_vocab_file, tgt_vocab_file, hparams.share_vocab)
+    vocab_table = vocab_utils.create_vocab_table_lm(vocab_file)
+    #src_file_placeholder = tf.placeholder(shape=(), dtype=tf.string)
+    #tgt_file_placeholder = tf.placeholder(shape=(), dtype=tf.string)
+    #src_dataset = tf.data.TextLineDataset(src_file_placeholder)
+    #tgt_dataset = tf.data.TextLineDataset(tgt_file_placeholder)
+    file_placeholder = tf.placeholder(shape=(), dtype=tf.string)
+    dataset = tf.data.TextLineDataset(file_placeholder)
+    iterator = iterator_utils.get_iterator(
+        dataset, # src dataset
+        dataset, # tgt dataset
+        vocab_table, # src vocab table
+        vocab_table, # tgt vocab table
+        hparams.batch_size,
+        sos=hparams.sos,
+        eos=hparams.eos,
+        random_seed=hparams.random_seed,
+        num_buckets=hparams.num_buckets,
+        src_max_len=hparams.src_max_len_infer,
+        tgt_max_len=hparams.tgt_max_len_infer)
+    model = model_creator(
+        hparams,
+        iterator=iterator,
+        mode=tf.contrib.learn.ModeKeys.EVAL,
+        source_vocab_table=vocab_table,
+        target_vocab_table=vocab_table,
+        scope=scope,
+        extra_args=extra_args)
+  return EvalModel(
+      graph=graph,
+      model=model,
+      src_file_placeholder=file_placeholder,
+      tgt_file_placeholder=file_placeholder,
+      iterator=iterator)
+
 
 
 def create_eval_model(model_creator, hparams, scope=None, extra_args=None):
