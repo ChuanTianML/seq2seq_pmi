@@ -77,10 +77,12 @@ class BaseModel(object):
       self.single_cell_fn = extra_args.single_cell_fn
 
     # Set num layers
-    self.num_encoder_layers = hparams.num_encoder_layers
+    self.num_encoder_layers = hparams.num_encoder_layers # tc: encoder as language model
     self.num_decoder_layers = hparams.num_decoder_layers
     assert self.num_encoder_layers
     assert self.num_decoder_layers
+
+    #self.layers = hparams.num_layers # tc: language model num of layers
 
     # Set num residual layers
     if hasattr(hparams, "num_residual_layers"):  # compatible common_test_utils
@@ -96,7 +98,7 @@ class BaseModel(object):
     tf.get_variable_scope().set_initializer(initializer)
 
     # Embeddings
-    self.init_embeddings(hparams, scope)
+    self.init_embeddings(hparams, scope) # tc: to do
     self.batch_size = tf.size(self.iterator.source_sequence_length)
 
     # Projection
@@ -107,6 +109,7 @@ class BaseModel(object):
 
     ## Train graph
     res = self.build_graph(hparams, scope=scope)
+    #self.losses = self._compute_losses(logits=res[0])
 
     if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
       self.train_loss = res[1]
@@ -116,7 +119,8 @@ class BaseModel(object):
     elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
       self.eval_loss = res[1]
       self.eval_logits = res[0] # tc
-    elif self.mode == tf.contrib.learn.ModeKeys.INFER:
+      self.losses = res[4]
+    elif self.mode == tf.contrib.learn.ModeKeys.INFER: # tc: not used
       self.infer_logits, _, self.final_context_state, self.sample_id = res
       self.sample_words = reverse_target_vocab_table.lookup(
           tf.to_int64(self.sample_id))
@@ -125,6 +129,7 @@ class BaseModel(object):
       ## Count the number of predicted words for compute ppl.
       self.predict_count = tf.reduce_sum(
           self.iterator.target_sequence_length)
+      self.predict_counts = self.iterator.target_sequence_length
 
     self.global_step = tf.Variable(0, trainable=False)
     params = tf.trainable_variables()
@@ -164,7 +169,7 @@ class BaseModel(object):
           tf.summary.scalar("train_loss", self.train_loss),
       ] + grad_norm_summary)
 
-    if self.mode == tf.contrib.learn.ModeKeys.INFER:
+    if self.mode == tf.contrib.learn.ModeKeys.INFER: # tc: not used
       self.infer_summary = self._get_infer_summary(hparams)
 
     # Saver
@@ -238,6 +243,7 @@ class BaseModel(object):
             decay_steps, decay_factor, staircase=True),
         name="learning_rate_decay_cond")
 
+
   def init_embeddings(self, hparams, scope):
     """Init embeddings."""
     self.embedding_encoder, self.embedding_decoder = (
@@ -274,11 +280,12 @@ class BaseModel(object):
 
   def prob(self, sess):
     assert self.mode == tf.contrib.learn.ModeKeys.EVAL
-    self.crossent = self._compute_crossent(self.eval_logits)
-    return sess.run([self.eval_loss,
-                     self.predict_count,
+    #self.crossent = self._compute_crossent(self.eval_logits)
+    return sess.run([self.losses,
+                     self.predict_counts,
                      self.batch_size,
-                     self.crossent])
+                     #self.crossent])
+                     ])
 
 
   def build_graph(self, hparams, scope=None):
@@ -316,11 +323,11 @@ class BaseModel(object):
       if self.mode != tf.contrib.learn.ModeKeys.INFER:
         with tf.device(model_helper.get_device_str(self.num_encoder_layers - 1,
                                                    self.num_gpus)):
-          loss = self._compute_loss(logits)
+          loss, losses = self._compute_loss(logits)
       else:
         loss = None
 
-      return logits, loss, final_context_state, sample_id
+      return logits, loss, final_context_state, sample_id, losses
 
   @abc.abstractmethod
   def _build_encoder(self, hparams):
@@ -505,6 +512,25 @@ class BaseModel(object):
     """
     pass
 
+  # not used
+  def _compute_losses(self, logits):
+    """Compute optimization loss."""
+    target_output = self.iterator.target_output
+    if self.time_major:
+      target_output = tf.transpose(target_output)
+    max_time = self.get_max_time(target_output)
+    crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=target_output, logits=logits)
+    target_weights = tf.sequence_mask(
+        self.iterator.target_sequence_length, max_time, dtype=logits.dtype)
+    if self.time_major:
+      target_weights = tf.transpose(target_weights)
+    losses = crossent * target_weights
+    losses = tf.transpose(losses)
+    losses = tf.reduce_sum(losses, 1)
+    return losses
+
+
   def _compute_loss(self, logits):
     """Compute optimization loss."""
     target_output = self.iterator.target_output
@@ -517,11 +543,17 @@ class BaseModel(object):
         self.iterator.target_sequence_length, max_time, dtype=logits.dtype)
     if self.time_major:
       target_weights = tf.transpose(target_weights)
+    losses = crossent * target_weights
 
     loss = tf.reduce_sum(
-        crossent * target_weights) / tf.to_float(self.batch_size)
-    return loss
+        losses) / tf.to_float(self.batch_size)
+    
+    losses = tf.transpose(losses)
+    losses = tf.reduce_sum(losses, 1)
 
+    return loss, losses
+
+  # not used
   def _compute_crossent(self, logits):
     """Compute the log-probability of each words in a sentence.
        Assert batch_size == 1
@@ -537,6 +569,7 @@ class BaseModel(object):
     if self.time_major:
       target_weights = tf.transpose(target_weights)
     crossent = crossent * target_weights
+    crossent = tf.transpose(crossent)
     return crossent
 
 

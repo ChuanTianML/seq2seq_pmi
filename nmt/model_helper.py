@@ -203,7 +203,7 @@ def create_prob_model(model_creator, hparams, scope=None, extra_args=None):
     src_dataset = tf.data.Dataset.from_tensor_slices(src_placeholder)
     tgt_dataset = tf.data.Dataset.from_tensor_slices(tgt_placeholder)
 
-    iterator = iterator_utils.get_iterator(
+    iterator = iterator_utils.get_iterator_prob(
         src_dataset,
         tgt_dataset,
         src_vocab_table,
@@ -211,8 +211,8 @@ def create_prob_model(model_creator, hparams, scope=None, extra_args=None):
         batch_size_placeholder, # haprams.batch_size
         sos=hparams.sos,
         eos=hparams.eos,
-        random_seed=hparams.random_seed,
-        num_buckets=1,
+        #random_seed=hparams.random_seed,
+        #num_buckets=1,
         src_max_len=hparams.src_max_len_infer,
         tgt_max_len=hparams.tgt_max_len_infer)
     model = model_creator(
@@ -418,6 +418,59 @@ def _create_or_load_embed(embed_name, vocab_file, embed_file,
       embedding = tf.get_variable(
           embed_name, [vocab_size, embed_size], dtype)
   return embedding
+
+def create_emb_lm(
+                    #share_vocab,
+                                       src_vocab_size,
+                                       #tgt_vocab_size,
+                                       src_embed_size,
+                                       #tgt_embed_size,
+                                       dtype=tf.float32,
+                                       num_partitions=0,
+                                       src_vocab_file=None,
+                                       #tgt_vocab_file=None,
+                                       src_embed_file=None,
+                                       #tgt_embed_file=None,
+                                       scope=None):
+  """Create embedding matrix for both encoder and decoder.
+
+  Args:
+    src_vocab_size: An integer. The source vocab size.
+    src_embed_size: An integer. The embedding dimension for the encoder's embedding.
+    dtype: dtype of the embedding matrix. Default to float32.
+    num_partitions: number of partitions used for the embedding vars.
+    scope: VariableScope for the created subgraph. Default to "embedding".
+
+  Returns:
+    embedding_encoder: Encoder's embedding matrix.
+
+  Raises:
+    ValueError: if use share_vocab but source and target have different vocab size.
+  """
+
+  if num_partitions <= 1:
+    partitioner = None
+  else:
+    # Note: num_partitions > 1 is required for distributed training due to
+    # embedding_lookup tries to colocate single partition-ed embedding variable
+    # with lookup ops. This may cause embedding variables being placed on worker
+    # jobs.
+    partitioner = tf.fixed_size_partitioner(num_partitions)
+
+  #if (src_embed_file or tgt_embed_file) and partitioner:
+  #  raise ValueError(
+  #      "Can't set num_partitions > 1 when using pretrained embedding")
+
+  with tf.variable_scope(
+      scope or "embeddings", dtype=dtype, partitioner=partitioner) as scope:
+
+      vocab_file = src_vocab_file
+      embed_file = src_embed_file
+      embedding_encoder = _create_or_load_embed(
+          "embedding_encoder", vocab_file, embed_file,
+          src_vocab_size, src_embed_size, dtype)
+
+  return embedding_encoder
 
 
 def create_emb_for_encoder_and_decoder(share_vocab,

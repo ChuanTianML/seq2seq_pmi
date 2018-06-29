@@ -78,17 +78,17 @@ class BaseModel(object):
 
     # Set num layers
     self.num_encoder_layers = hparams.num_encoder_layers
-    self.num_decoder_layers = hparams.num_decoder_layers
+    #self.num_decoder_layers = hparams.num_decoder_layers
     assert self.num_encoder_layers
-    assert self.num_decoder_layers
+    #assert self.num_decoder_layers
 
     # Set num residual layers
     if hasattr(hparams, "num_residual_layers"):  # compatible common_test_utils
       self.num_encoder_residual_layers = hparams.num_residual_layers
-      self.num_decoder_residual_layers = hparams.num_residual_layers
+      #self.num_decoder_residual_layers = hparams.num_residual_layers
     else:
       self.num_encoder_residual_layers = hparams.num_encoder_residual_layers
-      self.num_decoder_residual_layers = hparams.num_decoder_residual_layers
+      #self.num_decoder_residual_layers = hparams.num_decoder_residual_layers
 
     # Initializer
     initializer = model_helper.get_initializer(
@@ -96,7 +96,7 @@ class BaseModel(object):
     tf.get_variable_scope().set_initializer(initializer)
 
     # Embeddings
-    self.init_embeddings(hparams, scope)
+    self.init_embeddings_lm(hparams, scope)
     self.batch_size = tf.size(self.iterator.source_sequence_length)
 
     # Projection
@@ -237,6 +237,23 @@ class BaseModel(object):
             (self.global_step - start_decay_step),
             decay_steps, decay_factor, staircase=True),
         name="learning_rate_decay_cond")
+
+  def init_embeddings_lm(self, hparams, scope):
+    """Init embeddings."""
+    self.embedding_encoder, self.embedding_decoder = (
+        model_helper.create_emb_lm(
+            #share_vocab=hparams.share_vocab,
+            src_vocab_size=self.src_vocab_size,
+            #tgt_vocab_size=self.tgt_vocab_size,
+            src_embed_size=hparams.num_units,
+            #tgt_embed_size=hparams.num_units,
+            num_partitions=hparams.num_embeddings_partitions,
+            src_vocab_file=hparams.lm_vocab_file,
+            #tgt_vocab_file=hparams.tgt_vocab_file,
+            src_embed_file=hparams.lm_embed_file,
+            #tgt_embed_file=hparams.tgt_embed_file,
+            scope=scope,))
+
 
   def init_embeddings(self, hparams, scope):
     """Init embeddings."""

@@ -148,6 +148,78 @@ class Pmi():
         pmi = lever * src2tgt_log_prob + (1.0-lever) * tgt2src_log_prob
         return pmi, src2tgt_log_prob, tgt2src_log_prob
 
+    def src2tgt_log_probability_batch(self, srcs, tgts, re_cut=True):
+        """ get the log probability of target sentence given source sentence.
+        Args:
+            src: source sentence; tgt: target sentence
+        Return:
+            the probability.
+        """
+        assert len(srcs) == len(tgts)
+
+        model = self.src2tgt_model
+        sess = self.src2tgt_sess
+
+        if re_cut:
+            srcs = [self.preproc(src) for src in srcs]
+            tgts = [self.preproc(tgt) for tgt in tgts]
+        iterator_feed_dict = {
+            model.src_placeholder: srcs,
+            model.tgt_placeholder: tgts,
+            model.batch_size_placeholder: len(srcs),
+        }
+        sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
+
+        #loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        losses, predict_counts, batch_size = model.model.prob(sess)
+        log_probs = []
+        for (loss, prdc) in zip(losses, predict_counts):
+            log_probs.append(-loss/prdc)
+
+        # debug
+        #if self.debug:
+
+        return log_probs
+
+
+    def tgt2src_log_probability_batch(self, srcs, tgts, re_cut=True):
+        """ get the log probability of source sentence given target sentence.
+        Args:
+            src: source sentence; tgt: target sentence;
+        Return:
+            the probability.
+        """
+        assert len(srcs) == len(tgts)
+
+        model = self.tgt2src_model
+        sess = self.tgt2src_sess
+
+        if re_cut: 
+            srcs = [self.preproc(src) for src in srcs]
+            tgts = [self.preproc(tgt) for tgt in tgts]
+        iterator_feed_dict = {
+            model.src_placeholder: tgts,
+            model.tgt_placeholder: srcs,
+            model.batch_size_placeholder: len(srcs),
+        }
+        sess.run(model.iterator.initializer, feed_dict=iterator_feed_dict)
+
+        #loss, predict_count, batch_size, crossent = model.model.prob(sess)
+        losses, predict_counts, batch_size = model.model.prob(sess)
+
+        log_probs = []
+        for (loss, prdc) in zip(losses, predict_counts):
+            log_probs.append(-loss/prdc)
+ 
+        # debug
+        #if self.debug:
+        #    op_str = ('tgt2src:\twords_num %d,\twords_log_prob: ' % predict_count)
+        #    for p in crossent:
+        #        op_str += ('%.4f ' % p)
+        #    print op_str
+       
+        return log_probs
+
     def preproc(self, sentence):
         """ re-cut the input sentence
         """

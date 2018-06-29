@@ -12,7 +12,7 @@ args.add_argument('-o_path', type=str, dest='o_path', help='output file path.')
 args.add_argument('-vocab_path', type=str, dest='vocab_path', help='vocab file path.')
 args.add_argument('-lever', type=str, default=0.5, dest='lever', help='lever between src2tgt and tgt2src.')
 args.add_argument('-debug', type=int, default=0, dest='debug', help='run as debugging.')
-args.add_argument('-debug_num', type=int, default=1000, dest='debug_num', help='corpus lines num when debugging.')
+args.add_argument('-debug_num', type=int, default=100, dest='debug_num', help='corpus lines num when debugging.')
 args = args.parse_args()
 
 # functions
